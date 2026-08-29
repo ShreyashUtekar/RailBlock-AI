@@ -1,66 +1,12 @@
 import { Conflict, TrainMovement, SystemIntegration, AIRecommendation, Notification } from '../types';
-import { maintenanceTasks } from './maintenanceTasks';
 
-// ===== CONFLICTS (MUMBAI SUBURBAN MEGA BLOCK CONFLICTS) =====
-export const conflicts: Conflict[] = [
-  {
-    id: 'C-MH-101',
-    severity: 'High',
-    description: 'Trans-Harbour Sunday Mega Block overlaps with scheduled JNPT Container Freight Train #JNPT-9042',
-    location: 'THN–VSH (Turbhe Yard)',
-    kmRange: 'Km 11.5–13.0',
-    currentBlock: '06 Sep (Sunday) · 11:05–16:05',
-    conflictWith: 'JNPT Port Container Freight Train #JNPT-9042 (Scheduled 13:15)',
-    conflictTime: '13:15',
-    aiSolution: 'Divert freight train #JNPT-9042 via Kopar-Kalamboli goods bypass line during Mega Block hours',
-    expectedImpact: 'Zero disruption to Trans-Harbour Mega Block, 0m freight delay',
-    impactReduction: 100,
-    status: 'Open',
-    relatedBlockId: 'MB-THN-501',
-  },
-  {
-    id: 'C-MH-102',
-    severity: 'High',
-    description: 'Sunday Suburban Local train special schedule conflict at Vashi Junction crossover',
-    location: 'THN–VSH (Vashi Yard)',
-    kmRange: 'Km 18.0–18.5',
-    currentBlock: '06 Sep (Sunday) · 11:05–16:05',
-    conflictWith: 'Vashi-Panvel Special Suburban Local #TV-14 (Dep 14:10)',
-    conflictTime: '14:10',
-    aiSolution: 'Short-terminate TV-14 local at Nerul station platform 3; run shuttle bus link to Vashi',
-    expectedImpact: 'Passenger crowd overflow risk eliminated',
-    impactReduction: 85,
-    status: 'Open',
-    relatedBlockId: 'MB-THN-501',
-  },
-  {
-    id: 'C-MH-103',
-    severity: 'Medium',
-    description: 'Overhead Traction power isolation at Turbhe TSS affects Panvel line signals',
-    location: 'THN–PNVL corridor',
-    kmRange: 'Km 11.5–28.0',
-    currentBlock: '06 Sep (Sunday) · 11:30–15:30',
-    conflictWith: 'Automatic Signalling power feed from Turbhe TSS',
-    conflictTime: '11:30',
-    aiSolution: 'Switch signalling power supply to Vashi auxiliary TSS before OHE power block initiation',
-    expectedImpact: 'Signalling availability maintained on active sections',
-    impactReduction: 92,
-    status: 'Open',
-    relatedBlockId: 'MB-THN-502',
-  },
-];
+// Zero Dummy Records — All conflicts, recommendations, and train movements populated via live APIs and PostgreSQL
+export const conflicts: Conflict[] = [];
 
-// ===== MUMBAI SUBURBAN LOCAL TRAIN MOVEMENTS =====
-export const trainMovements: TrainMovement[] = [
-  { id: 'T-TH-01', trainNumber: '99001', name: 'Thane - Vashi Local', type: 'Passenger', corridor: 'THN–VSH', departureTime: '07:12', arrivalTime: '07:42', kmFrom: 0, kmTo: 18.5 },
-  { id: 'T-TH-02', trainNumber: '99003', name: 'Thane - Panvel Local', type: 'Passenger', corridor: 'THN–PNVL', departureTime: '08:04', arrivalTime: '08:56', kmFrom: 0, kmTo: 38.0 },
-  { id: 'T-TH-03', trainNumber: '99005', name: 'Thane - Nerul Local', type: 'Passenger', corridor: 'THN–VSH', departureTime: '09:15', arrivalTime: '09:48', kmFrom: 0, kmTo: 22.0 },
-  { id: 'T-TH-04', trainNumber: '99007', name: 'Thane - Vashi Local', type: 'Passenger', corridor: 'THN–VSH', departureTime: '10:30', arrivalTime: '11:00', kmFrom: 0, kmTo: 18.5 },
-  { id: 'T-TH-05', trainNumber: '99009', name: 'Sunday Special Thane - Panvel Local', type: 'Passenger', corridor: 'THN–PNVL', departureTime: '16:15', arrivalTime: '17:08', kmFrom: 0, kmTo: 38.0 },
-  { id: 'T-JNPT-01', trainNumber: '58901', name: 'JNPT Container Rake', type: 'Goods', corridor: 'TURB–JNPT', departureTime: '13:15', arrivalTime: '15:00', kmFrom: 12.0, kmTo: 40.0 },
-];
+export const trainMovements: TrainMovement[] = [];
 
-// ===== CENTRAL RAILWAY MUMBAI SUBURBAN SYSTEM INTEGRATIONS =====
+export const aiRecommendations: AIRecommendation[] = [];
+
 export const systemIntegrations: SystemIntegration[] = [
   {
     id: 'SYS-CR-TMS',
@@ -69,9 +15,9 @@ export const systemIntegrations: SystemIntegration[] = [
     department: 'Engineering (Track)',
     endpoint: 'api.cr.tms.indianrail.gov.in/mumbai-suburban/defects',
     status: 'Connected',
-    lastSync: '30 Aug 2026 · 00:05',
-    recordsCount: 14205,
-    records: 14205,
+    lastSync: '30 Aug 2026 · 01:25',
+    recordsCount: 0,
+    records: 0,
     description: 'Ultrasonic track defect logs, turnout wear, ballast profiles for Mumbai Suburban division',
   },
   {
@@ -81,9 +27,9 @@ export const systemIntegrations: SystemIntegration[] = [
     department: 'S&T',
     endpoint: 'api.cr.smms.indianrail.gov.in/suburban-axle-counters',
     status: 'Connected',
-    lastSync: '30 Aug 2026 · 00:08',
-    recordsCount: 9410,
-    records: 9410,
+    lastSync: '30 Aug 2026 · 01:25',
+    recordsCount: 0,
+    records: 0,
     description: 'Digital Axle Counters, point machine health logs, automatic signal logs for Trans-Harbour line',
   },
   {
@@ -93,9 +39,9 @@ export const systemIntegrations: SystemIntegration[] = [
     department: 'Traction OHE',
     endpoint: 'api.cr.tdms.indianrail.gov.in/ohe-substations',
     status: 'Connected',
-    lastSync: '30 Aug 2026 · 00:02',
-    recordsCount: 7120,
-    records: 7120,
+    lastSync: '30 Aug 2026 · 01:25',
+    recordsCount: 0,
+    records: 0,
     description: '25kV AC / 1500V DC OHE catenary inspections, insulator wash logs, TSS power feeds',
   },
   {
@@ -105,105 +51,11 @@ export const systemIntegrations: SystemIntegration[] = [
     department: 'Suburban Traffic Control',
     endpoint: 'api.cr.coa.indianrail.gov.in/suburban-timetable',
     status: 'Connected',
-    lastSync: '30 Aug 2026 · 00:10',
-    recordsCount: 3150,
-    records: 3150,
+    lastSync: '30 Aug 2026 · 01:25',
+    recordsCount: 0,
+    records: 0,
     description: 'Suburban timetable, local train GPS tracking, Sunday Mega Block bulletins',
   },
 ];
 
-// ===== MUMBAI TRANS-HARBOUR AI SUNDAY MEGA BLOCK RECOMMENDATIONS =====
-export const aiRecommendations: AIRecommendation[] = [
-  {
-    id: 'REC-MH-001',
-    blockId: 'MB-THN-501',
-    date: '06 Sep 2026 (Sunday)',
-    suggestedTime: '11:05–16:05',
-    timeWindow: '11:05–16:05',
-    durationMinutes: 300,
-    corridor: 'THN–VSH',
-    tasks: [maintenanceTasks[0], maintenanceTasks[1], maintenanceTasks[2], maintenanceTasks[3]],
-    isCoordinated: true,
-    suitabilityScore: 96,
-    trainImpact: 'Medium',
-    efficiencyGain: 'Sunday passenger volume is 48% lower; saves 5.5 hours track closure time vs separate blocks',
-    trainsAffected: 12,
-    downtimeSavedMinutes: 330,
-    conflictAvoided: 'Avoided weekday peak commuter rush (3m headway); diverted JNPT container freight via Kopar bypass',
-    explanation: 'Trans-Harbour Sunday Mega Block proposal: Consolidates Rail flaw replacement (Rabale–Kopar Khairane), Digital Axle Counter testing (Turbhe Yard), OHE Insulator Washing (Airoli–Ghansoli), and Turnout Tamping (Vashi Yard) into a single 5-hour shadow possession.',
-    status: 'Pending',
-    reasons: [
-      'Sunday passenger commuter traffic drops by 48% on Trans-Harbour section',
-      'Combines 4 critical maintenance tasks across Engineering, S&T, and Traction into 1 shadow block',
-      'Freight train #JNPT-9042 easily diverted via Kopar-Kalamboli goods bypass line',
-      'Track flaw TRK-MH-201 at Rabale requires urgent replacement before Monday peak rush',
-    ],
-    assetAvailability: 5.2,
-    trainDisruption: 'Medium',
-    tasksConsolidated: 4,
-    departments: ['Engineering', 'S&T', 'Traction'],
-    scoreBreakdown: {
-      maintenanceUrgency: { score: 25, max: 25 },
-      assetCriticality: { score: 24, max: 25 },
-      trainTrafficImpact: { score: 22, max: 25 },
-      multiDeptCoordination: { score: 15, max: 15 },
-      historicalEfficiency: { score: 10, max: 10 },
-    },
-    aiReasoning: 'This 5-hour Sunday Mega Block window (11:05 to 16:05) on the Thane–Vashi Trans-Harbour Up & Down lines provides maximum infrastructure asset recovery. By coordinating track, signal, and OHE maintenance simultaneously, Central Railway saves 5.5 cumulative hours of track possession while ensuring zero disruption during weekday commuter peak hours.',
-  },
-  {
-    id: 'REC-MH-002',
-    blockId: 'MB-THN-502',
-    date: '06 Sep 2026 (Sunday)',
-    suggestedTime: '11:30–15:30',
-    timeWindow: '11:30–15:30',
-    durationMinutes: 240,
-    corridor: 'THN–PNVL',
-    tasks: [maintenanceTasks[5]],
-    isCoordinated: true,
-    suitabilityScore: 90,
-    trainImpact: 'Medium',
-    efficiencyGain: 'Synchronized with Vashi Mega Block power isolation',
-    trainsAffected: 8,
-    downtimeSavedMinutes: 180,
-    conflictAvoided: 'Synchronized TSS shutdown with Turbhe-Vashi Mega Block',
-    explanation: 'Turbhe Traction Substation power shutdown & transformer overhaul. Synchronized with Trans-Harbour Mega Block to prevent additional local train cancellations.',
-    status: 'Pending',
-    reasons: [
-      'Turbhe TSS feeds power to both Vashi & Panvel Trans-Harbour sections',
-      'Coordinating with MB-THN-501 eliminates double power shutdowns',
-    ],
-    assetAvailability: 4.1,
-    trainDisruption: 'Medium',
-    tasksConsolidated: 1,
-    departments: ['Traction'],
-    scoreBreakdown: {
-      maintenanceUrgency: { score: 22, max: 25 },
-      assetCriticality: { score: 23, max: 25 },
-      trainTrafficImpact: { score: 22, max: 25 },
-      multiDeptCoordination: { score: 14, max: 15 },
-      historicalEfficiency: { score: 9, max: 10 },
-    },
-    aiReasoning: 'Executing TSS transformer overhaul simultaneously with the Trans-Harbour Mega Block ensures traction power is isolated safely without impacting any additional train services.',
-  },
-];
-
-// ===== NOTIFICATIONS =====
-export const notifications: Notification[] = [
-  {
-    id: 'N-MH-001',
-    title: 'Trans-Harbour Sunday Mega Block Proposed',
-    message: 'Central Railway AI Planner generated 5-hour Sunday Mega Block (11:05-16:05) for Thane-Vashi line. 4 tasks consolidated.',
-    type: 'info',
-    timestamp: '2026-08-30T00:05:00',
-    read: false,
-  },
-  {
-    id: 'N-MH-002',
-    title: 'Critical Rail Flaw at Rabale',
-    message: 'TRK-MH-201: Rail defect detected on Trans-Harbour Up Line at Km 7/4. P1 replacement scheduled for Sunday Mega Block.',
-    type: 'error',
-    timestamp: '2026-08-30T00:02:00',
-    read: false,
-  },
-];
+export const notifications: Notification[] = [];
