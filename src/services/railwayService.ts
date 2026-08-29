@@ -6,6 +6,7 @@ import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation
 import { calculatePriorityScore } from '../utils/scoring';
 
 const API_BASE_URL = 'http://localhost:5000/api';
+const RAILRADAR_DIRECT_KEY = 'rg_6f5b04ffd8a24b1ab02a424b72cb5b67';
 
 class RailwayDataService {
   private tasks: MaintenanceTask[] = [...initialTasks];
@@ -46,7 +47,7 @@ class RailwayDataService {
         fetch(`${API_BASE_URL}/corridors`),
         fetch(`${API_BASE_URL}/conflicts`),
         fetch(`${API_BASE_URL}/recommendations`),
-        fetch(`${API_BASE_URL}/trains`),
+        fetch(`${API_BASE_URL}/trains`).catch(() => null),
       ]);
 
       if (tRes.ok) this.tasks = await tRes.json();
@@ -60,17 +61,101 @@ class RailwayDataService {
     }
   }
 
+  // ===== RAILRADAR LIVE TRAIN SCHEDULE API Integration =====
+  async fetchRailRadarTrainSchedule(trainNumber: string): Promise<{
+    success: boolean;
+    train?: TrainMovement;
+    raw?: any;
+    error?: string;
+  }> {
+    try {
+      let data: any;
+
+      // 1. Try Express backend proxy first
+      try {
+        const res = await fetch(`${API_BASE_URL}/railradar/train/${trainNumber}?haltsOnly=true`);
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        // Fallback to direct RailRadar API call from browser
+      }
+
+      // 2. Direct RailRadar API call if server proxy wasn't used
+      if (!data) {
+        const res = await fetch(`https://api.railradar.in/v1/trains/${trainNumber}?haltsOnly=true`, {
+          headers: {
+            'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}`,
+          },
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error?.message || `RailRadar returned status ${res.status}` };
+        }
+        data = await res.json();
+      }
+
+      if (data && data.success && data.data?.train) {
+        const tr = data.data.train;
+        const route = data.data.route || [];
+
+        const departureTime = route[0]?.departure || '06:00';
+        const arrivalTime = route[route.length - 1]?.arrival || '14:40';
+
+        let categoryMapped: TrainMovement['type'] = 'Express';
+        if (tr.category === 'Superfast' || tr.type?.includes('Shatabdi') || tr.type?.includes('Rajdhani')) {
+          categoryMapped = 'Superfast';
+        } else if (tr.category === 'Suburban' || tr.category === 'Local' || tr.type?.includes('Local')) {
+          categoryMapped = 'Passenger';
+        } else if (tr.category === 'Freight' || tr.category === 'Goods') {
+          categoryMapped = 'Goods';
+        }
+
+        const newTrain: TrainMovement = {
+          id: `T-RR-${tr.number}`,
+          trainNumber: tr.number,
+          name: `${tr.name} (${tr.source?.code} ➔ ${tr.destination?.code})`,
+          type: categoryMapped,
+          corridor: 'CSMT–KYN (Fast)', // Default corridor
+          departureTime: departureTime,
+          arrivalTime: arrivalTime,
+          kmFrom: 0,
+          kmTo: tr.distance || 50,
+        };
+
+        // Add to active train timetable
+        this.addTrainMovement(newTrain);
+
+        return {
+          success: true,
+          train: newTrain,
+          raw: data.data,
+        };
+      }
+
+      return { success: false, error: 'Train schedule not found' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error reaching RailRadar API' };
+    }
+  }
+
   // ===== TRAIN MOVEMENTS =====
   getTrainMovements(): TrainMovement[] {
     return this.trains;
   }
 
-  addTrainMovement(train: Omit<TrainMovement, 'id'>): TrainMovement {
+  addTrainMovement(train: TrainMovement | Omit<TrainMovement, 'id'>): TrainMovement {
+    const existingIdx = this.trains.findIndex((t) => t.trainNumber === train.trainNumber);
     const newTrain: TrainMovement = {
       ...train,
-      id: `T-MH-${Math.floor(100 + Math.random() * 900)}`,
+      id: 'id' in train ? train.id : `T-MH-${Math.floor(100 + Math.random() * 900)}`,
     };
-    this.trains.unshift(newTrain);
+
+    if (existingIdx !== -1) {
+      this.trains[existingIdx] = newTrain;
+    } else {
+      this.trains.unshift(newTrain);
+    }
 
     if (this.isPostgresConnected) {
       fetch(`${API_BASE_URL}/trains`, {

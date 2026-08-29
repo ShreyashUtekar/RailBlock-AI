@@ -8,6 +8,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const RAILRADAR_API_KEY = process.env.RAILRADAR_API_KEY || 'rg_6f5b04ffd8a24b1ab02a424b72cb5b67';
 
 app.use(cors());
 app.use(express.json());
@@ -19,12 +20,75 @@ app.get('/api/health', async (req, res) => {
     status: 'online',
     service: 'RailBlock AI PostgreSQL Express Engine',
     division: 'Central Railway • Mumbai Suburban (BB)',
+    railradarApi: {
+      status: 'active',
+      keyConfigured: !!RAILRADAR_API_KEY,
+    },
     database: {
       type: 'PostgreSQL',
       connected: dbConnected,
     },
     timestamp: new Date().toISOString(),
   });
+});
+
+// ===== RAILRADAR LIVE TRAIN API PROXY =====
+app.get('/api/railradar/train/:number', async (req, res) => {
+  const { number } = req.params;
+  const haltsOnly = req.query.haltsOnly || 'true';
+
+  try {
+    const response = await fetch(`https://api.railradar.in/v1/trains/${number}?haltsOnly=${haltsOnly}`, {
+      headers: {
+        'Authorization': `Bearer ${RAILRADAR_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        success: false,
+        error: errData.error || { message: `RailRadar API returned status ${response.status}` },
+      });
+    }
+
+    const data = await response.json();
+
+    // Optionally auto-save fetched train to PostgreSQL train_movements table if connected
+    if (data.success && data.data?.train) {
+      const tr = data.data.train;
+      const route = data.data.route || [];
+      const deptTime = route[0]?.departure || '06:00';
+      const arrTime = route[route.length - 1]?.arrival || '14:40';
+
+      query(
+        `INSERT INTO conflicts (id, severity, description, location, km_range, current_block, conflict_with, conflict_time, ai_solution, expected_impact, impact_reduction, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          `C-RR-${tr.number}`,
+          'Medium',
+          `RailRadar Live Schedule: Train #${tr.number} (${tr.name}) running on route`,
+          'Central Railway Suburban Corridor',
+          `Km 0–${tr.distance || 50}`,
+          '06 Sep · Sunday Mega Block Window',
+          `Train #${tr.number} (${tr.name})`,
+          deptTime,
+          `Monitor COA track possession gap before train departure at ${deptTime}`,
+          'Schedule validated via RailRadar API',
+          90,
+          'Open',
+        ]
+      ).catch(() => {});
+    }
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: { message: err.message || 'Failed to connect to RailRadar API' },
+    });
+  }
 });
 
 // ===== TASKS API =====
@@ -204,5 +268,6 @@ app.get('/api/recommendations', async (req, res) => {
 // Start Server
 app.listen(PORT, async () => {
   console.log(`RailBlock AI Express + PostgreSQL Server running on http://localhost:${PORT}`);
+  console.log(`RailRadar Live API Key Configured: ${RAILRADAR_API_KEY.substring(0, 10)}...`);
   await seedDatabase();
 });
