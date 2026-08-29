@@ -109,30 +109,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 4000);
   };
 
-  const approveRecommendation = (id: string) => {
-    const newBlock = railwayService.approveRecommendation(id);
+  const approveRecommendation = async (id: string) => {
+    const newBlock = await railwayService.approveRecommendation(id);
     refreshData();
     if (newBlock) {
-      showToast(`Mega Block ${newBlock.id} approved & scheduled on ${newBlock.corridor}`);
+      showToast(`Mega Block ${newBlock.id} approved & scheduled in PostgreSQL!`);
     }
   };
 
-  const rejectRecommendation = (id: string) => {
-    railwayService.rejectRecommendation(id);
+  const rejectRecommendation = async (id: string) => {
+    await railwayService.rejectRecommendation(id);
     refreshData();
     showToast(`Recommendation ${id} dismissed.`);
   };
 
-  const resolveConflict = (id: string, solution?: string) => {
-    railwayService.resolveConflict(id, solution);
+  const resolveConflict = async (id: string, solution?: string) => {
+    await railwayService.resolveConflict(id, solution);
     refreshData();
-    showToast(`Conflict ${id} marked as resolved!`);
+    showToast(`Conflict ${id} resolved via Kopar-Kalamboli bypass!`);
   };
 
-  const runAIOptimization = (params: { corridor?: string; timeHorizonDays?: number }) => {
-    const res = railwayService.generateNewPlan(params);
+  const runAIOptimization = async (params: { corridor?: string; timeHorizonDays?: number }) => {
+    const res = await railwayService.generateNewPlan(params);
     refreshData();
-    showToast(`Trans-Harbour AI Mega Block Optimization Complete: Generated ${res.generatedBlocks} coordinated blocks with average suitability ${res.suitabilityAvg}%!`);
+    showToast(`Central Railway AI Optimizer: Generated ${res.generatedBlocks} coordinated Mega Block proposal with suitability index ${res.suitabilityAvg}%!`);
   };
 
   const createBlock = (blockData: Omit<MaintenanceBlock, 'id'>) => {
