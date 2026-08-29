@@ -61,7 +61,7 @@ class RailwayDataService {
     }
   }
 
-  // ===== RAILRADAR LIVE TRAIN SCHEDULE API Integration =====
+  // ===== RAILRADAR API 1: TRAIN TIMETABLE & SCHEDULE =====
   async fetchRailRadarTrainSchedule(trainNumber: string): Promise<{
     success: boolean;
     train?: TrainMovement;
@@ -71,22 +71,16 @@ class RailwayDataService {
     try {
       let data: any;
 
-      // 1. Try Express backend proxy first
       try {
         const res = await fetch(`${API_BASE_URL}/railradar/train/${trainNumber}?haltsOnly=true`);
         if (res.ok) {
           data = await res.json();
         }
-      } catch (err) {
-        // Fallback to direct RailRadar API call from browser
-      }
+      } catch (err) {}
 
-      // 2. Direct RailRadar API call if server proxy wasn't used
       if (!data) {
         const res = await fetch(`https://api.railradar.in/v1/trains/${trainNumber}?haltsOnly=true`, {
-          headers: {
-            'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}`,
-          },
+          headers: { 'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}` },
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -116,14 +110,13 @@ class RailwayDataService {
           trainNumber: tr.number,
           name: `${tr.name} (${tr.source?.code} ➔ ${tr.destination?.code})`,
           type: categoryMapped,
-          corridor: 'CSMT–KYN (Fast)', // Default corridor
+          corridor: 'CSMT–KYN (Fast)',
           departureTime: departureTime,
           arrivalTime: arrivalTime,
           kmFrom: 0,
           kmTo: tr.distance || 50,
         };
 
-        // Add to active train timetable
         this.addTrainMovement(newTrain);
 
         return {
@@ -136,6 +129,76 @@ class RailwayDataService {
       return { success: false, error: 'Train schedule not found' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Network error reaching RailRadar API' };
+    }
+  }
+
+  // ===== RAILRADAR API 2: LIVE RUNNING STATUS & TELEMETRY =====
+  async fetchRailRadarLiveStatus(trainNumber: string): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }> {
+    try {
+      let data: any;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/railradar/train/${trainNumber}/live`);
+        if (res.ok) data = await res.json();
+      } catch (err) {}
+
+      if (!data) {
+        const res = await fetch(`https://api.railradar.in/v1/trains/${trainNumber}/live`, {
+          headers: { 'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}` },
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error?.message || `RailRadar returned status ${res.status}` };
+        }
+        data = await res.json();
+      }
+
+      if (data && data.success) {
+        return { success: true, data: data.data };
+      }
+
+      return { success: false, error: 'Live status telemetry unavailable for this train run' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error reaching RailRadar Live API' };
+    }
+  }
+
+  // ===== RAILRADAR API 3: STATION TIMETABLE BOARD =====
+  async fetchRailRadarStationTimetable(stationCode: string): Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }> {
+    try {
+      let data: any;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/railradar/station/${stationCode}/trains`);
+        if (res.ok) data = await res.json();
+      } catch (err) {}
+
+      if (!data) {
+        const res = await fetch(`https://api.railradar.in/v1/stations/${stationCode}/trains`, {
+          headers: { 'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}` },
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error?.message || `RailRadar returned status ${res.status}` };
+        }
+        data = await res.json();
+      }
+
+      if (data && data.success) {
+        return { success: true, data: data.data };
+      }
+
+      return { success: false, error: 'Station timetable unavailable' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error reaching RailRadar Station API' };
     }
   }
 

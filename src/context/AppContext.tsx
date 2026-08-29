@@ -34,6 +34,8 @@ interface AppContextType {
   setIsCreateBlockModalOpen: (open: boolean) => void;
   isAddTrainModalOpen: boolean;
   setIsAddTrainModalOpen: (open: boolean) => void;
+  isRailRadarPanelOpen: boolean;
+  setIsRailRadarPanelOpen: (open: boolean) => void;
 
   // Actions
   approveRecommendation: (id: string) => void;
@@ -83,6 +85,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<MaintenanceTask | null>(null);
   const [isCreateBlockModalOpen, setIsCreateBlockModalOpen] = useState<boolean>(false);
   const [isAddTrainModalOpen, setIsAddTrainModalOpen] = useState<boolean>(false);
+  const [isRailRadarPanelOpen, setIsRailRadarPanelOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const refreshData = () => {
@@ -194,6 +197,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsCreateBlockModalOpen,
         isAddTrainModalOpen,
         setIsAddTrainModalOpen,
+        isRailRadarPanelOpen,
+        setIsRailRadarPanelOpen,
         approveRecommendation,
         rejectRecommendation,
         resolveConflict,

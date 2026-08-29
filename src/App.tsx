@@ -1,10 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { OptimizationModal } from './components/ai/OptimizationModal';
 import { AddTrainModal } from './components/common/AddTrainModal';
+import { RailRadarLivePanel } from './components/ai/RailRadarLivePanel';
 
 // Pages
 import { Overview } from './pages/Overview';
@@ -18,6 +19,8 @@ import { DataIntegration } from './pages/DataIntegration';
 import { Settings } from './pages/Settings';
 
 export const AppContent: React.FC = () => {
+  const { isRailRadarPanelOpen, setIsRailRadarPanelOpen } = useApp();
+
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans text-slate-800">
       {/* Persistent Operations Control Sidebar */}
@@ -44,9 +47,13 @@ export const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Global AI Optimization Workflow Modal & Add Train Schedule Modal */}
+      {/* Global Modals */}
       <OptimizationModal />
       <AddTrainModal />
+      <RailRadarLivePanel
+        isOpen={isRailRadarPanelOpen}
+        onClose={() => setIsRailRadarPanelOpen(false)}
+      />
     </div>
   );
 };

@@ -32,16 +32,14 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// ===== RAILRADAR LIVE TRAIN API PROXY =====
+// ===== RAILRADAR API 1: TRAIN SCHEDULE & TIMETABLE =====
 app.get('/api/railradar/train/:number', async (req, res) => {
   const { number } = req.params;
   const haltsOnly = req.query.haltsOnly || 'true';
 
   try {
     const response = await fetch(`https://api.railradar.in/v1/trains/${number}?haltsOnly=${haltsOnly}`, {
-      headers: {
-        'Authorization': `Bearer ${RAILRADAR_API_KEY}`,
-      },
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
     });
 
     if (!response.ok) {
@@ -53,41 +51,89 @@ app.get('/api/railradar/train/:number', async (req, res) => {
     }
 
     const data = await response.json();
-
-    // Optionally auto-save fetched train to PostgreSQL train_movements table if connected
-    if (data.success && data.data?.train) {
-      const tr = data.data.train;
-      const route = data.data.route || [];
-      const deptTime = route[0]?.departure || '06:00';
-      const arrTime = route[route.length - 1]?.arrival || '14:40';
-
-      query(
-        `INSERT INTO conflicts (id, severity, description, location, km_range, current_block, conflict_with, conflict_time, ai_solution, expected_impact, impact_reduction, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          `C-RR-${tr.number}`,
-          'Medium',
-          `RailRadar Live Schedule: Train #${tr.number} (${tr.name}) running on route`,
-          'Central Railway Suburban Corridor',
-          `Km 0–${tr.distance || 50}`,
-          '06 Sep · Sunday Mega Block Window',
-          `Train #${tr.number} (${tr.name})`,
-          deptTime,
-          `Monitor COA track possession gap before train departure at ${deptTime}`,
-          'Schedule validated via RailRadar API',
-          90,
-          'Open',
-        ]
-      ).catch(() => {});
-    }
-
     res.json(data);
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: { message: err.message || 'Failed to connect to RailRadar API' },
+    res.status(500).json({ success: false, error: { message: err.message } });
+  }
+});
+
+// ===== RAILRADAR API 2: LIVE RUNNING STATUS & DELAY TRACKING =====
+app.get('/api/railradar/train/:number/live', async (req, res) => {
+  const { number } = req.params;
+  const date = req.query.date;
+
+  try {
+    const url = date
+      ? `https://api.railradar.in/v1/trains/${number}/live?date=${date}`
+      : `https://api.railradar.in/v1/trains/${number}/live`;
+
+    const response = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
     });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        success: false,
+        error: errData.error || { message: `RailRadar Live API returned status ${response.status}` },
+      });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: err.message } });
+  }
+});
+
+// ===== RAILRADAR API 3: ROUTE TRACK GEOMETRY =====
+app.get('/api/railradar/train/:number/route', async (req, res) => {
+  const { number } = req.params;
+  const format = req.query.format || 'geojson';
+  const stops = req.query.stops || 'true';
+
+  try {
+    const response = await fetch(`https://api.railradar.in/v1/trains/${number}/route?format=${format}&stops=${stops}`, {
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        success: false,
+        error: errData.error || { message: `RailRadar Route API returned status ${response.status}` },
+      });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: err.message } });
+  }
+});
+
+// ===== RAILRADAR API 4: STATION TIMETABLE BOARD =====
+app.get('/api/railradar/station/:code/trains', async (req, res) => {
+  const { code } = req.params;
+  const includeIntermediate = req.query.includeIntermediate || 'false';
+
+  try {
+    const response = await fetch(`https://api.railradar.in/v1/stations/${code}/trains?includeIntermediate=${includeIntermediate}`, {
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        success: false,
+        error: errData.error || { message: `RailRadar Station API returned status ${response.status}` },
+      });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: err.message } });
   }
 });
 
@@ -268,6 +314,6 @@ app.get('/api/recommendations', async (req, res) => {
 // Start Server
 app.listen(PORT, async () => {
   console.log(`RailBlock AI Express + PostgreSQL Server running on http://localhost:${PORT}`);
-  console.log(`RailRadar Live API Key Configured: ${RAILRADAR_API_KEY.substring(0, 10)}...`);
+  console.log(`RailRadar Live API Key Active: ${RAILRADAR_API_KEY.substring(0, 10)}...`);
   await seedDatabase();
 });

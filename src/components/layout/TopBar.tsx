@@ -7,6 +7,7 @@ import {
   Filter,
   RefreshCw,
   SlidersHorizontal,
+  Radio,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -18,6 +19,7 @@ export const TopBar: React.FC = () => {
     searchQuery,
     setSearchQuery,
     setIsOptimizationModalOpen,
+    setIsRailRadarPanelOpen,
     conflicts,
     toastMessage,
   } = useApp();
@@ -118,6 +120,15 @@ export const TopBar: React.FC = () => {
             )}
           </button>
         </div>
+
+        {/* RailRadar Live Tracking Button */}
+        <button
+          onClick={() => setIsRailRadarPanelOpen(true)}
+          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs px-3.5 py-1.5 rounded-md shadow-xs transition-colors"
+        >
+          <Radio className="w-4 h-4 text-emerald-400" />
+          <span>RailRadar Live</span>
+        </button>
 
         {/* Generate AI Plan Action Button */}
         <button
