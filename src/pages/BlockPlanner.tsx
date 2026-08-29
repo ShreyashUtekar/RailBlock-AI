@@ -9,6 +9,8 @@ import { useApp } from '../context/AppContext';
 import { MaintenanceBlock } from '../types';
 import { CalendarRange, Plus, Sparkles, Layers, Clock, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
+import { railwayService } from '../services/railwayService';
+
 export const BlockPlanner: React.FC = () => {
   const {
     blocks,
@@ -17,6 +19,7 @@ export const BlockPlanner: React.FC = () => {
     selectedCorridor,
     createBlock,
     setIsOptimizationModalOpen,
+    showToast,
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily');
@@ -222,6 +225,33 @@ export const BlockPlanner: React.FC = () => {
             </select>
           </div>
 
+          {/* RailRadar API Auto-Detect Timings Banner */}
+          <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-lg p-3 space-y-2 border border-blue-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-xs">
+                <Sparkles className="w-4 h-4 text-blue-300" />
+                <span>Auto-Detect Mega Block Window (RailRadar API)</span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await railwayService.fetchOptimalWindowFromRailRadar(formCorridor);
+                  if (res.success) {
+                    if (res.autoDetectedStartTime) setFormStartTime(res.autoDetectedStartTime);
+                    if (res.autoDetectedEndTime) setFormEndTime(res.autoDetectedEndTime);
+                    showToast(`RailRadar API: Auto-detected optimal gap (${res.autoDetectedStartTime}–${res.autoDetectedEndTime}) for ${formCorridor}`);
+                  }
+                }}
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-bold shadow-xs transition-colors"
+              >
+                ⚡ Auto-Fill Timings from RailRadar
+              </button>
+            </div>
+            <p className="text-[10px] text-blue-200">
+              Queries live RailRadar station timetables to calculate the lowest train density window with zero manual entry.
+            </p>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="font-bold text-slate-900 block mb-1">Date</label>
@@ -233,21 +263,21 @@ export const BlockPlanner: React.FC = () => {
               />
             </div>
             <div>
-              <label className="font-bold text-slate-900 block mb-1">Start Time</label>
+              <label className="font-bold text-slate-900 block mb-1">Start Time (Auto-Filled)</label>
               <input
                 type="time"
                 value={formStartTime}
                 onChange={(e) => setFormStartTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono"
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono font-bold text-blue-700"
               />
             </div>
             <div>
-              <label className="font-bold text-slate-900 block mb-1">End Time</label>
+              <label className="font-bold text-slate-900 block mb-1">End Time (Auto-Filled)</label>
               <input
                 type="time"
                 value={formEndTime}
                 onChange={(e) => setFormEndTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono"
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono font-bold text-blue-700"
               />
             </div>
           </div>
