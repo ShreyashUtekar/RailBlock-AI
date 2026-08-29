@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation, SystemIntegration } from '../types';
+import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation, SystemIntegration, TrainMovement } from '../types';
 import { railwayService } from '../services/railwayService';
 
 interface AppContextType {
@@ -9,6 +9,7 @@ interface AppContextType {
   conflicts: Conflict[];
   recommendations: AIRecommendation[];
   integrations: SystemIntegration[];
+  trains: TrainMovement[];
   
   // Filter States
   selectedCorridor: string;
@@ -31,6 +32,8 @@ interface AppContextType {
   setSelectedTaskForDetail: (task: MaintenanceTask | null) => void;
   isCreateBlockModalOpen: boolean;
   setIsCreateBlockModalOpen: (open: boolean) => void;
+  isAddTrainModalOpen: boolean;
+  setIsAddTrainModalOpen: (open: boolean) => void;
 
   // Actions
   approveRecommendation: (id: string) => void;
@@ -38,6 +41,7 @@ interface AppContextType {
   resolveConflict: (id: string, solution?: string) => void;
   runAIOptimization: (params: { corridor?: string; timeHorizonDays?: number }) => void;
   createBlock: (blockData: Omit<MaintenanceBlock, 'id'>) => void;
+  addTrainMovement: (trainData: Omit<TrainMovement, 'id'>) => void;
   updateTaskStatus: (id: string, status: MaintenanceTask['status']) => void;
   
   // Stats
@@ -64,6 +68,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
   const [integrations, setIntegrations] = useState<SystemIntegration[]>([]);
+  const [trains, setTrains] = useState<TrainMovement[]>([]);
 
   // Default to Trans-Harbour & Sunday Mega Block date
   const [selectedCorridor, setSelectedCorridor] = useState<string>('THN–VSH');
@@ -77,6 +82,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeExplainabilityRec, setActiveExplainabilityRec] = useState<AIRecommendation | null>(null);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<MaintenanceTask | null>(null);
   const [isCreateBlockModalOpen, setIsCreateBlockModalOpen] = useState<boolean>(false);
+  const [isAddTrainModalOpen, setIsAddTrainModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const refreshData = () => {
@@ -86,6 +92,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setConflicts([...railwayService.getConflicts()]);
     setRecommendations([...railwayService.getAIRecommendations()]);
     setIntegrations([...railwayService.getIntegrations()]);
+    setTrains([...railwayService.getTrainMovements()]);
   };
 
   useEffect(() => {
@@ -131,6 +138,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast(`Mega Block ${newBlock.id} successfully scheduled.`);
   };
 
+  const addTrainMovement = (trainData: Omit<TrainMovement, 'id'>) => {
+    const newTrain = railwayService.addTrainMovement(trainData);
+    refreshData();
+    showToast(`Train Schedule #${newTrain.trainNumber} (${newTrain.name}) added to ${newTrain.corridor}!`);
+  };
+
   const updateTaskStatus = (id: string, status: MaintenanceTask['status']) => {
     railwayService.updateTaskStatus(id, status);
     refreshData();
@@ -160,6 +173,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         conflicts,
         recommendations,
         integrations,
+        trains,
         selectedCorridor,
         setSelectedCorridor,
         selectedDepartment,
@@ -178,11 +192,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setSelectedTaskForDetail,
         isCreateBlockModalOpen,
         setIsCreateBlockModalOpen,
+        isAddTrainModalOpen,
+        setIsAddTrainModalOpen,
         approveRecommendation,
         rejectRecommendation,
         resolveConflict,
         runAIOptimization,
         createBlock,
+        addTrainMovement,
         updateTaskStatus,
         kpiStats,
         toastMessage,

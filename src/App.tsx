@@ -4,6 +4,7 @@ import { AppProvider } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { OptimizationModal } from './components/ai/OptimizationModal';
+import { AddTrainModal } from './components/common/AddTrainModal';
 
 // Pages
 import { Overview } from './pages/Overview';
@@ -43,8 +44,9 @@ export const AppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Global AI Optimization Workflow Modal */}
+      {/* Global AI Optimization Workflow Modal & Add Train Schedule Modal */}
       <OptimizationModal />
+      <AddTrainModal />
     </div>
   );
 };

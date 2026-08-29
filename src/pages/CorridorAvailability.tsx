@@ -4,18 +4,23 @@ import { FilterBar } from '../components/common/FilterBar';
 import { DataTable, Column } from '../components/common/DataTable';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { useApp } from '../context/AppContext';
-import { Corridor } from '../types';
-import { Compass, Train, Clock, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { Corridor, TrainMovement } from '../types';
+import { Compass, Train, Clock, AlertTriangle, ShieldCheck, Plus } from 'lucide-react';
 
 export const CorridorAvailability: React.FC = () => {
-  const { corridors, selectedCorridor } = useApp();
+  const { corridors, trains, selectedCorridor, setIsAddTrainModalOpen } = useApp();
 
   const filteredCorridors =
     selectedCorridor === 'All'
       ? corridors
       : corridors.filter((c) => c.name === selectedCorridor);
 
-  const columns: Column<Corridor>[] = [
+  const filteredTrains =
+    selectedCorridor === 'All'
+      ? trains
+      : trains.filter((t) => t.corridor === selectedCorridor);
+
+  const corridorColumns: Column<Corridor>[] = [
     {
       header: 'Corridor Name',
       accessor: (c) => (
@@ -89,11 +94,67 @@ export const CorridorAvailability: React.FC = () => {
     },
   ];
 
+  const trainColumns: Column<TrainMovement>[] = [
+    {
+      header: 'Train No. / Rake',
+      accessor: (t) => <span className="font-mono font-bold text-blue-700">{t.trainNumber}</span>,
+      sortable: true,
+    },
+    {
+      header: 'Train Name',
+      accessor: (t) => <span className="font-semibold text-slate-900 text-xs">{t.name}</span>,
+    },
+    {
+      header: 'Category',
+      accessor: (t) => (
+        <span
+          className={`text-[11px] font-bold px-2 py-0.5 rounded ${
+            t.type === 'Passenger'
+              ? 'bg-blue-100 text-blue-800'
+              : t.type === 'Goods'
+              ? 'bg-purple-100 text-purple-800'
+              : 'bg-emerald-100 text-emerald-800'
+          }`}
+        >
+          {t.type}
+        </span>
+      ),
+      sortable: true,
+    },
+    {
+      header: 'Suburban Corridor',
+      accessor: (t) => <span className="font-semibold text-slate-800 text-xs">{t.corridor}</span>,
+      sortable: true,
+    },
+    {
+      header: 'Departure (COA)',
+      accessor: (t) => <span className="font-mono font-bold text-slate-800">{t.departureTime}</span>,
+      sortable: true,
+    },
+    {
+      header: 'Arrival (COA)',
+      accessor: (t) => <span className="font-mono font-bold text-slate-800">{t.arrivalTime}</span>,
+    },
+    {
+      header: 'Section Km',
+      accessor: (t) => <span className="font-mono text-xs">{t.kmFrom} – {t.kmTo} Km</span>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Corridor Availability & Capacity Analysis"
-        subtitle="Track possession capacity windows, train density heatmaps & block suitability"
+        title="Corridor Availability & Train Schedules"
+        subtitle="Suburban local train timetables, freight rake paths, and track possession capacity windows"
+        actions={
+          <button
+            onClick={() => setIsAddTrainModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-md font-semibold text-xs shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Train Schedule</span>
+          </button>
+        }
       />
 
       <FilterBar showDepartmentFilter={false} showCriticalityFilter={false} />
@@ -138,13 +199,37 @@ export const CorridorAvailability: React.FC = () => {
         ))}
       </div>
 
+      {/* Train Timetable & Movements Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <Train className="w-4 h-4 text-blue-600" />
+            <span>Active Train Timetables & Scheduled Movements ({filteredTrains.length})</span>
+          </h2>
+          <button
+            onClick={() => setIsAddTrainModalOpen(true)}
+            className="flex items-center gap-1 text-xs font-bold text-blue-700 hover:text-blue-900"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Add New Train</span>
+          </button>
+        </div>
+
+        <DataTable
+          columns={trainColumns}
+          data={filteredTrains}
+          keyExtractor={(t) => t.id}
+          pageSize={8}
+        />
+      </div>
+
       {/* Corridor Master Table */}
       <div className="space-y-3">
         <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
           Corridor Capacity & Traffic Master Directory
         </h2>
         <DataTable
-          columns={columns}
+          columns={corridorColumns}
           data={filteredCorridors}
           keyExtractor={(c) => c.id}
           pageSize={8}

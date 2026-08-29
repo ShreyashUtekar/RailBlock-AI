@@ -1,8 +1,8 @@
 import { maintenanceTasks as initialTasks } from '../data/maintenanceTasks';
 import { maintenanceBlocks as initialBlocks } from '../data/blocks';
 import { corridors as initialCorridors } from '../data/corridors';
-import { conflicts as initialConflicts, trainMovements, systemIntegrations, aiRecommendations as initialRecommendations } from '../data/otherData';
-import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation, SystemIntegration } from '../types';
+import { conflicts as initialConflicts, trainMovements as initialTrains, systemIntegrations, aiRecommendations as initialRecommendations } from '../data/otherData';
+import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation, SystemIntegration, TrainMovement } from '../types';
 import { calculatePriorityScore } from '../utils/scoring';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -14,6 +14,7 @@ class RailwayDataService {
   private conflicts: Conflict[] = [...initialConflicts];
   private recommendations: AIRecommendation[] = [...initialRecommendations];
   private integrations: SystemIntegration[] = [...systemIntegrations];
+  private trains: TrainMovement[] = [...initialTrains];
   private isPostgresConnected: boolean = false;
 
   constructor() {
@@ -39,12 +40,13 @@ class RailwayDataService {
 
   private async loadPostgresData() {
     try {
-      const [tRes, bRes, cRes, cfRes, rRes] = await Promise.all([
+      const [tRes, bRes, cRes, cfRes, rRes, trRes] = await Promise.all([
         fetch(`${API_BASE_URL}/tasks`),
         fetch(`${API_BASE_URL}/blocks`),
         fetch(`${API_BASE_URL}/corridors`),
         fetch(`${API_BASE_URL}/conflicts`),
         fetch(`${API_BASE_URL}/recommendations`),
+        fetch(`${API_BASE_URL}/trains`),
       ]);
 
       if (tRes.ok) this.tasks = await tRes.json();
@@ -52,9 +54,33 @@ class RailwayDataService {
       if (cRes.ok) this.corridors = await cRes.json();
       if (cfRes.ok) this.conflicts = await cfRes.json();
       if (rRes.ok) this.recommendations = await rRes.json();
+      if (trRes && trRes.ok) this.trains = await trRes.json();
     } catch (e) {
       console.warn('Failed to load data from PostgreSQL API:', e);
     }
+  }
+
+  // ===== TRAIN MOVEMENTS =====
+  getTrainMovements(): TrainMovement[] {
+    return this.trains;
+  }
+
+  addTrainMovement(train: Omit<TrainMovement, 'id'>): TrainMovement {
+    const newTrain: TrainMovement = {
+      ...train,
+      id: `T-MH-${Math.floor(100 + Math.random() * 900)}`,
+    };
+    this.trains.unshift(newTrain);
+
+    if (this.isPostgresConnected) {
+      fetch(`${API_BASE_URL}/trains`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTrain),
+      }).catch(console.warn);
+    }
+
+    return newTrain;
   }
 
   // ===== TASKS =====
@@ -213,10 +239,6 @@ class RailwayDataService {
   // ===== SYSTEM INTEGRATIONS =====
   getIntegrations(): SystemIntegration[] {
     return this.integrations;
-  }
-
-  getTrainMovements() {
-    return trainMovements;
   }
 
   // ===== SIMULATE AI GENERATION =====
