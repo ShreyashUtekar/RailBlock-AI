@@ -202,6 +202,41 @@ class RailwayDataService {
     }
   }
 
+  // ===== RAILRADAR API 4: SUBURBAN LOCAL TRAINS LOOKUP =====
+  async fetchRailRadarLocalTrains(city: string = 'Mumbai'): Promise<{
+    success: boolean;
+    data?: Record<string, string>;
+    error?: string;
+  }> {
+    try {
+      let data: any;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/railradar/lookup/trains/local?city=${encodeURIComponent(city)}`);
+        if (res.ok) data = await res.json();
+      } catch (err) {}
+
+      if (!data) {
+        const res = await fetch(`https://api.railradar.in/v1/lookup/trains/local?city=${encodeURIComponent(city)}`, {
+          headers: { 'Authorization': `Bearer ${RAILRADAR_DIRECT_KEY}` },
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return { success: false, error: errData.error?.message || `RailRadar returned status ${res.status}` };
+        }
+        data = await res.json();
+      }
+
+      if (data && data.success && data.data) {
+        return { success: true, data: data.data };
+      }
+
+      return { success: false, error: 'Suburban local trains data unavailable' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error reaching RailRadar Lookup API' };
+    }
+  }
+
   // ===== TRAIN MOVEMENTS =====
   getTrainMovements(): TrainMovement[] {
     return this.trains;

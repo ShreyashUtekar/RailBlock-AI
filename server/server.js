@@ -137,6 +137,30 @@ app.get('/api/railradar/station/:code/trains', async (req, res) => {
   }
 });
 
+// ===== RAILRADAR API 5: SUBURBAN LOCAL TRAINS LOOKUP BY CITY =====
+app.get('/api/railradar/lookup/trains/local', async (req, res) => {
+  const city = req.query.city || 'Mumbai';
+
+  try {
+    const response = await fetch(`https://api.railradar.in/v1/lookup/trains/local?city=${encodeURIComponent(city)}`, {
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        success: false,
+        error: errData.error || { message: `RailRadar Lookup API returned status ${response.status}` },
+      });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: err.message } });
+  }
+});
+
 // ===== TASKS API =====
 app.get('/api/tasks', async (req, res) => {
   try {
