@@ -5,6 +5,8 @@ import { conflicts as initialConflicts, trainMovements, systemIntegrations, aiRe
 import { MaintenanceTask, MaintenanceBlock, Corridor, Conflict, AIRecommendation, SystemIntegration } from '../types';
 import { calculatePriorityScore } from '../utils/scoring';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 class RailwayDataService {
   private tasks: MaintenanceTask[] = [...initialTasks];
   private blocks: MaintenanceBlock[] = [...initialBlocks];
@@ -12,6 +14,48 @@ class RailwayDataService {
   private conflicts: Conflict[] = [...initialConflicts];
   private recommendations: AIRecommendation[] = [...initialRecommendations];
   private integrations: SystemIntegration[] = [...systemIntegrations];
+  private isPostgresConnected: boolean = false;
+
+  constructor() {
+    this.checkPostgresConnection();
+  }
+
+  private async checkPostgresConnection() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/health`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.database?.connected) {
+          this.isPostgresConnected = true;
+          console.log('RailBlock AI Frontend connected to PostgreSQL Express Backend!');
+          this.loadPostgresData();
+        }
+      }
+    } catch (e) {
+      console.log('PostgreSQL backend server offline. Using local in-memory dataset.');
+      this.isPostgresConnected = false;
+    }
+  }
+
+  private async loadPostgresData() {
+    try {
+      const [tRes, bRes, cRes, cfRes, rRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/tasks`),
+        fetch(`${API_BASE_URL}/blocks`),
+        fetch(`${API_BASE_URL}/corridors`),
+        fetch(`${API_BASE_URL}/conflicts`),
+        fetch(`${API_BASE_URL}/recommendations`),
+      ]);
+
+      if (tRes.ok) this.tasks = await tRes.json();
+      if (bRes.ok) this.blocks = await bRes.json();
+      if (cRes.ok) this.corridors = await cRes.json();
+      if (cfRes.ok) this.conflicts = await cfRes.json();
+      if (rRes.ok) this.recommendations = await rRes.json();
+    } catch (e) {
+      console.warn('Failed to load data from PostgreSQL API:', e);
+    }
+  }
 
   // ===== TASKS =====
   getTasks(): MaintenanceTask[] {
@@ -19,27 +63,36 @@ class RailwayDataService {
   }
 
   getTaskById(id: string): MaintenanceTask | undefined {
-    return this.tasks.find(t => t.id === id);
+    return this.tasks.find((t) => t.id === id);
   }
 
   addTask(task: Omit<MaintenanceTask, 'id' | 'priorityScore'>): MaintenanceTask {
     const newTask: MaintenanceTask = {
       ...task,
-      id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `TASK-MH-${Math.floor(100 + Math.random() * 900)}`,
       priorityScore: 0,
     };
     newTask.priorityScore = calculatePriorityScore(newTask);
     this.tasks.unshift(newTask);
+
+    if (this.isPostgresConnected) {
+      fetch(`${API_BASE_URL}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTask),
+      }).catch(console.warn);
+    }
+
     return newTask;
   }
 
   updateTaskStatus(id: string, status: MaintenanceTask['status'], recommendedBlock?: string): MaintenanceTask | null {
-    const idx = this.tasks.findIndex(t => t.id === id);
+    const idx = this.tasks.findIndex((t) => t.id === id);
     if (idx !== -1) {
       this.tasks[idx] = {
         ...this.tasks[idx],
         status,
-        ...(recommendedBlock ? { recommendedBlock } : {})
+        ...(recommendedBlock ? { recommendedBlock } : {}),
       };
       return this.tasks[idx];
     }
@@ -52,26 +105,33 @@ class RailwayDataService {
   }
 
   getBlockById(id: string): MaintenanceBlock | undefined {
-    return this.blocks.find(b => b.id === id);
+    return this.blocks.find((b) => b.id === id);
   }
 
   createBlock(block: Omit<MaintenanceBlock, 'id'>): MaintenanceBlock {
     const newBlock: MaintenanceBlock = {
       ...block,
-      id: `B-${Math.floor(220 + Math.random() * 80)}`,
+      id: `MB-THN-${Math.floor(500 + Math.random() * 500)}`,
     };
     this.blocks.unshift(newBlock);
-    
-    // Update task statuses
-    block.tasks.forEach(taskId => {
+
+    block.tasks.forEach((taskId) => {
       this.updateTaskStatus(taskId, 'Scheduled', `${newBlock.date} ${newBlock.startTime}–${newBlock.endTime}`);
     });
+
+    if (this.isPostgresConnected) {
+      fetch(`${API_BASE_URL}/blocks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBlock),
+      }).catch(console.warn);
+    }
 
     return newBlock;
   }
 
   updateBlockStatus(id: string, status: MaintenanceBlock['status']): MaintenanceBlock | null {
-    const idx = this.blocks.findIndex(b => b.id === id);
+    const idx = this.blocks.findIndex((b) => b.id === id);
     if (idx !== -1) {
       this.blocks[idx] = { ...this.blocks[idx], status };
       return this.blocks[idx];
@@ -85,7 +145,7 @@ class RailwayDataService {
   }
 
   getCorridorById(id: string): Corridor | undefined {
-    return this.corridors.find(c => c.id === id);
+    return this.corridors.find((c) => c.id === id);
   }
 
   // ===== CONFLICTS =====
@@ -94,13 +154,18 @@ class RailwayDataService {
   }
 
   resolveConflict(conflictId: string, solution?: string): boolean {
-    const idx = this.conflicts.findIndex(c => c.id === conflictId);
+    const idx = this.conflicts.findIndex((c) => c.id === conflictId);
     if (idx !== -1) {
       this.conflicts[idx] = {
         ...this.conflicts[idx],
         status: 'Resolved',
-        ...(solution ? { aiSolution: solution } : {})
+        ...(solution ? { aiSolution: solution } : {}),
       };
+
+      if (this.isPostgresConnected) {
+        fetch(`${API_BASE_URL}/conflicts/${conflictId}/resolve`, { method: 'POST' }).catch(console.warn);
+      }
+
       return true;
     }
     return false;
@@ -112,24 +177,24 @@ class RailwayDataService {
   }
 
   approveRecommendation(recId: string): MaintenanceBlock | null {
-    const rec = this.recommendations.find(r => r.id === recId);
+    const rec = this.recommendations.find((r) => r.id === recId);
     if (rec) {
       rec.status = 'Approved';
-      const timeStr = rec.suggestedTime || '01:30–04:30';
+      const timeStr = rec.suggestedTime || '11:05–16:05';
       const recTasks = rec.tasks || [];
       const newBlock = this.createBlock({
-        date: rec.date || '2026-09-02',
-        startTime: timeStr.split('–')[0] || '01:30',
-        endTime: timeStr.split('–')[1] || '04:30',
+        date: rec.date || '2026-09-06',
+        startTime: timeStr.split('–')[0] || '11:05',
+        endTime: timeStr.split('–')[1] || '16:05',
         corridor: rec.corridor,
-        kmFrom: recTasks[0]?.kmFrom || 145,
-        kmTo: recTasks[recTasks.length - 1]?.kmTo || 148,
-        departments: Array.from(new Set(recTasks.map(t => t.department))),
-        tasks: recTasks.map(t => t.id),
+        kmFrom: recTasks[0]?.kmFrom || 4.0,
+        kmTo: recTasks[recTasks.length - 1]?.kmTo || 18.2,
+        departments: Array.from(new Set(recTasks.map((t) => t.department))),
+        tasks: recTasks.map((t) => t.id),
         status: 'Planned',
         isCoordinated: rec.isCoordinated ?? true,
         suitabilityScore: rec.suitabilityScore,
-        trainImpact: rec.trainImpact || 'Low',
+        trainImpact: rec.trainImpact || 'Medium',
       });
       return newBlock;
     }
@@ -137,7 +202,7 @@ class RailwayDataService {
   }
 
   rejectRecommendation(recId: string): boolean {
-    const rec = this.recommendations.find(r => r.id === recId);
+    const rec = this.recommendations.find((r) => r.id === recId);
     if (rec) {
       rec.status = 'Rejected';
       return true;
@@ -156,25 +221,25 @@ class RailwayDataService {
 
   // ===== SIMULATE AI GENERATION =====
   generateNewPlan(params: { corridor?: string; timeHorizonDays?: number }): { generatedBlocks: number; conflictsResolved: number; suitabilityAvg: number } {
-    const newRecId = `REC-${Math.floor(100 + Math.random() * 900)}`;
+    const newRecId = `REC-MH-${Math.floor(100 + Math.random() * 900)}`;
     const newRec: AIRecommendation = {
       id: newRecId,
-      corridor: params.corridor && params.corridor !== 'All' ? params.corridor : 'NDLS–PWL',
-      suggestedTime: '02 Sep · 01:30–04:30',
-      durationMinutes: 180,
+      corridor: params.corridor && params.corridor !== 'All' ? params.corridor : 'THN–VSH',
+      suggestedTime: '06 Sep · 11:05–16:05',
+      durationMinutes: 300,
       tasks: [
-        this.tasks.find(t => t.id === 'TRK-1042') || this.tasks[0],
-        this.tasks.find(t => t.id === 'SIG-2395') || this.tasks[1],
-        this.tasks.find(t => t.id === 'TD-8835') || this.tasks[2]
+        this.tasks.find((t) => t.id === 'TRK-MH-201') || this.tasks[0],
+        this.tasks.find((t) => t.id === 'SIG-MH-405') || this.tasks[1],
+        this.tasks.find((t) => t.id === 'TD-MH-802') || this.tasks[2],
       ],
       isCoordinated: true,
-      suitabilityScore: 95,
-      trainImpact: 'Low',
-      efficiencyGain: '38% less track closure vs separate blocks',
-      trainsAffected: 0,
-      downtimeSavedMinutes: 140,
-      conflictAvoided: 'Avoided Rajdhani #12952 (23:55) and Goods #58142 (05:00)',
-      explanation: 'Consolidates critical track defect replacement (Engineering), signal cabling (S&T), and OHE insulator cleaning (Traction) into a single 3-hour window during zero-traffic hours.',
+      suitabilityScore: 96,
+      trainImpact: 'Medium',
+      efficiencyGain: 'Sunday passenger commuter traffic is 48% lower; saves 5.5 hours track closure time',
+      trainsAffected: 12,
+      downtimeSavedMinutes: 330,
+      conflictAvoided: 'Avoided weekday peak commuter rush (3m headway); diverted JNPT container freight via Kopar bypass',
+      explanation: 'Trans-Harbour Sunday Mega Block proposal: Consolidates Rail flaw replacement (Rabale–Kopar Khairane), Digital Axle Counter testing (Turbhe Yard), and OHE Insulator Washing (Airoli–Ghansoli) into a single 5-hour shadow possession.',
       status: 'Pending',
     };
 
@@ -183,7 +248,7 @@ class RailwayDataService {
     return {
       generatedBlocks: 3,
       conflictsResolved: 4,
-      suitabilityAvg: 92,
+      suitabilityAvg: 96,
     };
   }
 }
