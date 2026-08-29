@@ -126,9 +126,24 @@ CREATE TABLE system_integrations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 7. TRAIN MOVEMENTS TABLE (RailRadar / COA Ingest)
+CREATE TABLE train_movements (
+    id VARCHAR(50) PRIMARY KEY,
+    train_number VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    train_type VARCHAR(50) NOT NULL DEFAULT 'Passenger',
+    corridor VARCHAR(100) NOT NULL,
+    departure_time VARCHAR(10) NOT NULL,
+    arrival_time VARCHAR(10) NOT NULL,
+    km_from NUMERIC(8, 2) DEFAULT 0,
+    km_to NUMERIC(8, 2) DEFAULT 50,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- INDEXES FOR FAST OPERATIONAL SEARCH
 CREATE INDEX idx_tasks_corridor ON maintenance_tasks(corridor);
 CREATE INDEX idx_tasks_department ON maintenance_tasks(department);
 CREATE INDEX idx_blocks_corridor ON maintenance_blocks(corridor);
 CREATE INDEX idx_blocks_date ON maintenance_blocks(block_date);
 CREATE INDEX idx_conflicts_status ON conflicts(status);
+CREATE INDEX idx_trains_number ON train_movements(train_number);

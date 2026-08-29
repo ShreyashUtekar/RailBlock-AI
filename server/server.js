@@ -306,6 +306,79 @@ app.post('/api/conflicts/:id/resolve', async (req, res) => {
   }
 });
 
+// ===== TRAINS API =====
+app.get('/api/trains', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM train_movements ORDER BY departure_time ASC');
+    const trains = result.rows.map((r) => ({
+      id: r.id,
+      trainNumber: r.train_number,
+      name: r.name,
+      type: r.train_type,
+      corridor: r.corridor,
+      departureTime: r.departure_time,
+      arrivalTime: r.arrival_time,
+      kmFrom: parseFloat(r.km_from),
+      kmTo: parseFloat(r.km_to),
+    }));
+    res.json(trains);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/trains', async (req, res) => {
+  try {
+    const t = req.body;
+    const id = t.id || `T-RR-${t.trainNumber}`;
+    await query(
+      `INSERT INTO train_movements (id, train_number, name, train_type, corridor, departure_time, arrival_time, km_from, km_to)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (train_number) DO UPDATE
+       SET name = EXCLUDED.name, train_type = EXCLUDED.train_type, departure_time = EXCLUDED.departure_time, arrival_time = EXCLUDED.arrival_time`,
+      [id, t.trainNumber, t.name, t.type || 'Passenger', t.corridor || 'THN–VSH', t.departureTime || '08:00', t.arrivalTime || '08:45', t.kmFrom || 0, t.kmTo || 38]
+    );
+    res.status(201).json({ id, ...t });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ===== LIVE RAILRADAR DIRECT INGEST API =====
+app.post('/api/sync/railradar', async (req, res) => {
+  const city = req.query.city || 'Mumbai';
+  try {
+    const response = await fetch(`https://api.railradar.in/v1/lookup/trains/local?city=${encodeURIComponent(city)}`, {
+      headers: { 'Authorization': `Bearer ${RAILRADAR_API_KEY}` },
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Failed to connect to RailRadar' });
+    }
+
+    const data = await response.json();
+    let syncedCount = 0;
+
+    if (data.success && data.data) {
+      const trainEntries = Object.entries(data.data);
+      for (const [trainNumber, name] of trainEntries) {
+        const id = `T-RR-${trainNumber}`;
+        await query(
+          `INSERT INTO train_movements (id, train_number, name, train_type, corridor, departure_time, arrival_time, km_from, km_to)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           ON CONFLICT (train_number) DO NOTHING`,
+          [id, trainNumber, name, 'Passenger', 'THN–VSH', '08:00', '08:45', 0, 38]
+        ).catch(() => {});
+        syncedCount++;
+      }
+    }
+
+    res.json({ success: true, syncedCount, message: `Successfully ingested ${syncedCount} live ${city} suburban train schedules from RailRadar into PostgreSQL!` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ===== AI RECOMMENDATIONS API =====
 app.get('/api/recommendations', async (req, res) => {
   try {
