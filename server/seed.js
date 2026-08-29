@@ -3,10 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { maintenanceTasks } from '../src/data/maintenanceTasks.js';
-import { corridors } from '../src/data/corridors.js';
-import { maintenanceBlocks } from '../src/data/blocks.js';
-import { conflicts, systemIntegrations, aiRecommendations } from '../src/data/otherData.js';
+import {
+  corridorsData,
+  maintenanceTasksData,
+  maintenanceBlocksData,
+  conflictsData,
+  aiRecommendationsData,
+  systemIntegrationsData,
+} from './data.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +18,7 @@ const __dirname = path.dirname(__filename);
 export async function seedDatabase() {
   const isConnected = await testConnection();
   if (!isConnected) {
-    console.warn('Skipping PostgreSQL database seed (database not reachable).');
+    console.warn('PostgreSQL database server not running or connection refused. Skipping database auto-seed.');
     return;
   }
 
@@ -26,7 +30,7 @@ export async function seedDatabase() {
 
     // 1. Seed Corridors
     console.log('Seeding Corridors table...');
-    for (const c of corridors) {
+    for (const c of corridorsData) {
       await pool.query(
         `INSERT INTO corridors (id, name, from_station, to_station, total_km, available_hours, train_density, planned_blocks, available_capacity, risk, time_slots)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -37,7 +41,7 @@ export async function seedDatabase() {
 
     // 2. Seed Maintenance Tasks
     console.log('Seeding Maintenance Tasks table...');
-    for (const t of maintenanceTasks) {
+    for (const t of maintenanceTasksData) {
       await pool.query(
         `INSERT INTO maintenance_tasks (id, department, asset, asset_type, location, km_from, km_to, corridor, issue, maintenance_type, criticality, priority, priority_score, due_date, estimated_duration, status, recommended_block, safety_impact, failure_risk, overdue_days)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
@@ -52,7 +56,7 @@ export async function seedDatabase() {
 
     // 3. Seed Maintenance Blocks
     console.log('Seeding Maintenance Blocks table...');
-    for (const b of maintenanceBlocks) {
+    for (const b of maintenanceBlocksData) {
       await pool.query(
         `INSERT INTO maintenance_blocks (id, block_date, start_time, end_time, corridor, km_from, km_to, departments, task_ids, status, is_coordinated, suitability_score, train_impact)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -63,7 +67,7 @@ export async function seedDatabase() {
 
     // 4. Seed Conflicts
     console.log('Seeding Conflicts table...');
-    for (const cf of conflicts) {
+    for (const cf of conflictsData) {
       await pool.query(
         `INSERT INTO conflicts (id, severity, description, location, km_range, current_block, conflict_with, conflict_time, ai_solution, expected_impact, impact_reduction, status, related_block_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -74,7 +78,7 @@ export async function seedDatabase() {
 
     // 5. Seed AI Recommendations
     console.log('Seeding AI Recommendations table...');
-    for (const rec of aiRecommendations) {
+    for (const rec of aiRecommendationsData) {
       await pool.query(
         `INSERT INTO ai_recommendations (id, block_id, rec_date, suggested_time, duration_minutes, corridor, is_coordinated, suitability_score, train_impact, efficiency_gain, trains_affected, downtime_saved_minutes, conflict_avoided, explanation, status, reasons, tasks_data)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
@@ -90,12 +94,12 @@ export async function seedDatabase() {
 
     // 6. Seed System Integrations
     console.log('Seeding System Integrations table...');
-    for (const sys of systemIntegrations) {
+    for (const sys of systemIntegrationsData) {
       await pool.query(
         `INSERT INTO system_integrations (id, name, full_name, department, endpoint, status, last_sync, records_count, description)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (id) DO NOTHING`,
-        [sys.id, sys.name, sys.fullName, sys.department, sys.endpoint, sys.status, sys.lastSync, sys.recordsCount || sys.records || 0, sys.description]
+        [sys.id, sys.name, sys.fullName, sys.department, sys.endpoint, sys.status, sys.lastSync, sys.recordsCount || 0, sys.description]
       );
     }
 
