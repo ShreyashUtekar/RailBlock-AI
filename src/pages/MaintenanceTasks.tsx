@@ -7,19 +7,70 @@ import { Modal } from '../components/common/Modal';
 import { useApp } from '../context/AppContext';
 import { MaintenanceTask } from '../types';
 import { Wrench, ShieldAlert, Layers, Plus, Calendar, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
+import { railwayService } from '../services/railwayService';
 
 export const MaintenanceTasks: React.FC = () => {
   const {
     tasks,
+    corridors,
     selectedCorridor,
     selectedDepartment,
     selectedCriticality,
     selectedTaskForDetail,
     setSelectedTaskForDetail,
     updateTaskStatus,
+    showToast,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'All' | 'Engineering' | 'S&T' | 'Traction'>('All');
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+
+  // Form states for new task
+  const [department, setDepartment] = useState<'Engineering' | 'S&T' | 'Traction'>('Engineering');
+  const [asset, setAsset] = useState<string>('');
+  const [assetType, setAssetType] = useState<string>('Track / USFD Rail');
+  const [location, setLocation] = useState<string>('');
+  const [corridor, setCorridor] = useState<string>('THN–VSH');
+  const [issue, setIssue] = useState<string>('');
+  const [maintenanceType, setMaintenanceType] = useState<string>('Corrective Rail Replacement');
+  const [criticality, setCriticality] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('Critical');
+  const [priority, setPriority] = useState<'P1' | 'P2' | 'P3'>('P1');
+  const [estimatedDuration, setEstimatedDuration] = useState<number>(180);
+  const [dueDate, setDueDate] = useState<string>('2026-09-06');
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const priorityScore = criticality === 'Critical' ? 98 : criticality === 'High' ? 88 : 70;
+
+    railwayService.addTask({
+      department,
+      asset: asset || 'Switch Expansion Joint Defect',
+      assetType,
+      location: location || 'Km 7/4–8/2 (Rabale)',
+      kmFrom: 7.4,
+      kmTo: 8.2,
+      corridor,
+      issue: issue || 'USFD Rail flaw detected. Replacement required.',
+      maintenanceType,
+      criticality,
+      priority,
+      dueDate,
+      estimatedDuration,
+      status: 'Pending',
+      safetyImpact: 5,
+      failureRisk: 0.88,
+      overdueDays: 0,
+    });
+
+    showToast('New Central Railway Maintenance Task logged & saved to PostgreSQL!');
+    setIsAddModalOpen(false);
+    
+    // Reset form
+    setAsset('');
+    setIssue('');
+    setLocation('');
+  };
 
   const filteredTasks = tasks.filter((t) => {
     if (activeTab !== 'All' && t.department !== activeTab) return false;
@@ -99,6 +150,15 @@ export const MaintenanceTasks: React.FC = () => {
       <PageHeader
         title="Multi-Department Maintenance Task Catalog"
         subtitle="Integrated maintenance log from TMS (Track), SMMS (Signals), and TDMS (Traction OHE)"
+        actions={
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-md font-semibold text-xs shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Log Maintenance Task</span>
+          </button>
+        }
       />
 
       {/* Global Filter Bar */}
@@ -143,6 +203,147 @@ export const MaintenanceTasks: React.FC = () => {
         onRowClick={(task) => setSelectedTaskForDetail(task)}
       />
 
+      {/* Log Maintenance Task Modal */}
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        title="Log New Maintenance Defect / Task"
+        subtitle="Ingest real-world defect log into Central Railway PostgreSQL Database"
+      >
+        <form onSubmit={handleFormSubmit} className="space-y-4 text-xs text-slate-700">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Department</label>
+              <select
+                value={department}
+                onChange={(e) => setDepartment(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-medium"
+              >
+                <option value="Engineering">Engineering (Track)</option>
+                <option value="S&T">S&T (Signals & Telecom)</option>
+                <option value="Traction">Traction (OHE Electrical)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Corridor</label>
+              <select
+                value={corridor}
+                onChange={(e) => setCorridor(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-medium"
+              >
+                {corridors.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} ({c.from}–{c.to})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Asset Name</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Switch Expansion Joint USFD Defect"
+                value={asset}
+                onChange={(e) => setAsset(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Asset Type</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Track / USFD Rail"
+                value={assetType}
+                onChange={(e) => setAssetType(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-900 block mb-1">Location Section</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Km 7/4–8/2 (Rabale–Kopar Khairane)"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-900 block mb-1">Defect / Issue Description</label>
+            <textarea
+              required
+              rows={3}
+              placeholder="Describe the flaw, failure risk, or maintenance work required..."
+              value={issue}
+              onChange={(e) => setIssue(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 rounded p-2"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Criticality</label>
+              <select
+                value={criticality}
+                onChange={(e) => setCriticality(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-bold text-red-700"
+              >
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Est. Duration (Mins)</label>
+              <input
+                type="number"
+                value={estimatedDuration}
+                onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="font-bold text-slate-900 block mb-1">Target Due Date</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded p-2"
+              />
+            </div>
+          </div>
+
+          <div className="pt-3 flex justify-end gap-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(false)}
+              className="px-4 py-2 border border-slate-300 rounded font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded font-semibold shadow-xs"
+            >
+              Save Defect Log to PostgreSQL
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Task Inspection Detail Modal */}
       {selectedTaskForDetail && (
         <Modal
@@ -152,7 +353,6 @@ export const MaintenanceTasks: React.FC = () => {
           subtitle={`${selectedTaskForDetail.department} • ${selectedTaskForDetail.corridor}`}
         >
           <div className="space-y-4 text-xs text-slate-700">
-            {/* Top Badges */}
             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
               <div className="flex items-center gap-2">
                 <StatusBadge type="department" value={selectedTaskForDetail.department} size="md" />
@@ -167,7 +367,6 @@ export const MaintenanceTasks: React.FC = () => {
               </div>
             </div>
 
-            {/* Issue Info */}
             <div className="space-y-1">
               <span className="font-bold text-slate-900 block">Asset & Issue Description:</span>
               <p className="p-3 bg-white border border-slate-200 rounded font-medium text-slate-800">
@@ -175,7 +374,6 @@ export const MaintenanceTasks: React.FC = () => {
               </p>
             </div>
 
-            {/* Location & Time details */}
             <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded border border-slate-200 font-mono">
               <div>
                 <span className="text-[10px] text-slate-400 block">Location Section</span>
@@ -195,7 +393,6 @@ export const MaintenanceTasks: React.FC = () => {
               </div>
             </div>
 
-            {/* Recommended Block info if available */}
             {selectedTaskForDetail.recommendedBlock && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded text-blue-900 flex items-center justify-between">
                 <div>
@@ -206,7 +403,6 @@ export const MaintenanceTasks: React.FC = () => {
               </div>
             )}
 
-            {/* Actions */}
             <div className="pt-3 flex justify-between items-center border-t border-slate-200">
               <button
                 onClick={() => setSelectedTaskForDetail(null)}
